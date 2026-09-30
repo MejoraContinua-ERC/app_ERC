@@ -1,10 +1,10 @@
 // Generado con IA (Claude - ERC AI Workspace) - Restringido
 // Service worker de Tableros ERC: guarda la estructura de la app para abrirla rápido.
 // Los datos de los tableros NO se guardan aquí; siempre se consultan en línea.
-const VERSION = 'tableros-erc-v3';
+const VERSION = 'tableros-erc-v4';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest',
-  './logo-erc.png', './oxec-ii.jpg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-32.png'
+  './', './index.html', './manifest.webmanifest', './logo-erc.png', './oxec-ii.jpg',
+  './erc-app-192.png', './erc-app-512.png', './erc-app-180.png', './erc-app-32.png'
 ];
 
 self.addEventListener('install', e => {
@@ -19,12 +19,12 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Solo atiende archivos propios de la app. Primero la red, y si no hay conexión, la copia guardada.
+// Solo atiende archivos propios de la app: primero la red y, sin conexión, la copia guardada.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put(e.request, copy));

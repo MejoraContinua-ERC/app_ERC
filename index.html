@@ -1,6 +1,6 @@
 <!--
   Generado con IA (Claude - ERC AI Workspace) - Restringido
-  Tableros ERC, versión 2 (PWA)
+  Tableros ERC, versión 3 (PWA)
   Para agregar un tablero nuevo: añada una tarjeta en <main> y su entrada en el objeto TABLEROS del script.
 -->
 <!DOCTYPE html>
@@ -12,8 +12,8 @@
 <meta name="theme-color" content="#24537F">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="erc-app-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="erc-app-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tableros ERC">
@@ -39,7 +39,7 @@
 
   /* Encabezado de clasificación y atribución (requerido por política de ERC) */
   .clasif{
-    position:fixed;inset:0 0 auto 0;z-index:50;
+    position:fixed;inset:0 0 auto 0;z-index:60;
     padding:calc(var(--top) + 4px) 14px 4px;
     background:var(--fondo);color:var(--gris);border-bottom:1px solid var(--linea);
     font-size:11.5px;line-height:1.4;text-align:center;
@@ -84,8 +84,9 @@
   }
 
   /* ---------- Visor ---------- */
-  #visor{position:fixed;inset:0;display:none;flex-direction:column;background:var(--fondo)}
+  #visor{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;background:var(--fondo)}
   #visor.abierto{display:flex}
+  body.en-tablero #inicio{display:none}
   .herramientas{
     margin-top:var(--clasif-h);height:var(--barra);flex:none;
     display:flex;align-items:center;gap:4px;padding:0 6px;background:var(--marino);color:#fff;
@@ -152,7 +153,6 @@
     </a>
   </div>
   <div class="marco">
-    <iframe id="marco" title="Tablero" referrerpolicy="no-referrer"></iframe>
     <div class="estado" id="cargando"><div class="pulso"></div>Cargando tablero…</div>
     <div class="estado" id="error" hidden>
       <p>El tablero no respondió. Revise su conexión e inténtelo otra vez.</p>
@@ -167,6 +167,7 @@
 const TABLEROS = {
   generacion: {
     titulo: 'Generación de Energía',
+    corto: 'Generación',
     url: 'https://mejoracontinua-erc.github.io/Generacion-De-Energia/'
   }
 };
@@ -175,44 +176,73 @@ const $ = id => document.getElementById(id);
 const barra = document.querySelector('.clasif');
 new ResizeObserver(() => document.documentElement.style.setProperty('--clasif-h', barra.offsetHeight + 'px')).observe(barra);
 
-const visor = $('visor'), marco = $('marco'), cargando = $('cargando'), error = $('error');
-let espera;
+const visor = $('visor'), contenedor = document.querySelector('.marco'), cargando = $('cargando'), error = $('error');
+let espera, marco = null;
 
-function abrir(clave){
+/* El iframe se crea nuevo cada vez que se abre un tablero. Así no deja pasos en el historial
+   y el botón Atrás del celular regresa directo al inicio. */
+function cargar(url){
+  quitarMarco();
+  error.hidden = true; cargando.hidden = false;
+  espera = setTimeout(() => { cargando.hidden = true; error.hidden = false; }, 15000);
+  marco = document.createElement('iframe');
+  marco.title = 'Tablero';
+  marco.referrerPolicy = 'no-referrer';
+  marco.src = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  marco.addEventListener('load', () => { clearTimeout(espera); cargando.hidden = true; });
+  contenedor.prepend(marco);
+}
+
+function quitarMarco(){
+  clearTimeout(espera);
+  if(marco){ marco.remove(); marco = null; }
+}
+
+function mostrar(clave){
   const t = TABLEROS[clave];
-  if(!t){ cerrar(); return; }
-  $('visor-titulo').textContent = t.titulo;
+  if(!t){ ocultar(); return; }
+  $('visor-titulo').textContent = t.corto || t.titulo;
   $('externo').href = $('error-externo').href = t.url;
+  document.body.classList.add('en-tablero');
   visor.classList.add('abierto');
   document.title = t.titulo + ' - Tableros ERC';
   cargar(t.url);
 }
 
-function cargar(url){
-  error.hidden = true; cargando.hidden = false;
-  clearTimeout(espera);
-  espera = setTimeout(() => { cargando.hidden = true; error.hidden = false; }, 15000);
-  marco.src = 'about:blank';
-  requestAnimationFrame(() => { marco.src = url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now(); });
-}
-
-marco.addEventListener('load', () => {
-  if(marco.src === 'about:blank' || !visor.classList.contains('abierto')) return;
-  clearTimeout(espera); cargando.hidden = true;
-});
-
-function cerrar(){
+function ocultar(){
+  quitarMarco();
   visor.classList.remove('abierto');
-  marco.src = 'about:blank'; clearTimeout(espera);
+  document.body.classList.remove('en-tablero');
   document.title = 'Tableros ERC';
 }
 
-function ruta(){ const c = location.hash.slice(1); c ? abrir(c) : cerrar(); }
-window.addEventListener('hashchange', ruta);
-$('volver').addEventListener('click', () => { history.length > 1 && location.hash ? history.back() : (location.hash = ''); });
+// Abrir desde la tarjeta: agrega un solo paso al historial.
+document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
+  const clave = a.getAttribute('href').slice(1);
+  if(!TABLEROS[clave]) return;
+  e.preventDefault();
+  history.pushState({ tablero: clave }, '', '#' + clave);
+  mostrar(clave);
+}));
+
+// Botón Atrás del celular: primero recorre los pasos dentro del tablero y luego vuelve al inicio.
+window.addEventListener('popstate', () => {
+  const clave = location.hash.slice(1);
+  TABLEROS[clave] ? mostrar(clave) : ocultar();
+});
+
+// Botón Inicio de la barra.
+// Cierra directo, sin depender del historial (el tablero puede tener pasos propios).
+$('volver').addEventListener('click', () => {
+  history.replaceState(null, '', location.pathname);
+  ocultar();
+});
+
 $('recargar').addEventListener('click', () => { const t = TABLEROS[location.hash.slice(1)]; t && cargar(t.url); });
 $('reintentar').addEventListener('click', () => $('recargar').click());
-ruta();
+
+// Si la app se abre con un enlace directo a un tablero.
+if(TABLEROS[location.hash.slice(1)]) mostrar(location.hash.slice(1));
 
 /* Ayuda para instalar (solo aparece si la app aún no está instalada) */
 const instalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
