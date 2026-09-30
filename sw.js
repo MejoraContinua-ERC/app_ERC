@@ -1,10 +1,10 @@
 // Generado con IA (Claude - ERC AI Workspace) - Restringido
 // Service worker de Tableros ERC: guarda la estructura de la app para abrirla rápido.
 // Los datos de los tableros NO se guardan aquí; siempre se consultan en línea.
-const VERSION = 'tableros-erc-v2';
+const VERSION = 'tableros-erc-v3';
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-32.png'
+  './logo-erc.png', './oxec-ii.jpg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './favicon-32.png'
 ];
 
 self.addEventListener('install', e => {
